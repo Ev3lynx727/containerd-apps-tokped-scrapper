@@ -177,7 +177,18 @@ Get current bestseller products across categories.
 
 ## 🚀 Quick Start
 
-### Docker Compose (Easiest)
+### GitHub Container Registry (Recommended)
+```bash
+# Pull from GitHub Container Registry
+docker pull ghcr.io/ev3lynx727/containerd-apps-tokped-scrapper:latest
+
+# Run the container
+docker run -d -p 8443:8443 --name tokped-api ghcr.io/ev3lynx727/containerd-apps-tokped-scrapper:latest
+
+# The API will be available at https://localhost:8443
+```
+
+### Docker Compose (Local Development)
 ```bash
 # Clone or navigate to the project directory
 cd /path/to/tokped-scraper
@@ -217,19 +228,50 @@ python server.py
 # API will be available at https://localhost:8443
 ```
 
-## 📊 Container Status
+## 📊 Container Status & Registry
 
-After running the container, check its status:
+### Automated Builds
+The container is automatically built and pushed to **GitHub Container Registry (GHCR)** on every push to the main branch:
+
+- **Registry**: `ghcr.io/ev3lynx727/containerd-apps-tokped-scrapper`
+- **Tags**: `latest`, `main`, `main-<commit-sha>`
+- **Platforms**: Linux AMD64 & ARM64
+- **Security**: Build attestations included
+
+### Container Management
 
 ```bash
 # Check if container is running
 docker ps | grep tokped
 
 # View container logs
+docker logs tokped-api
+
+# For docker-compose setup
 docker logs containerd-apps-tokped-scrap_scraper_1
 
 # Check health endpoint
 curl -k https://localhost:8443/health
+
+# Stop container
+docker stop tokped-api
+docker rm tokped-api
+
+# Or with docker-compose
+docker-compose down
+```
+
+### Registry Information
+
+```bash
+# View available tags
+curl -s https://ghcr.io/v2/ev3lynx727/containerd-apps-tokped-scrapper/tags/list | jq .
+
+# Pull specific version
+docker pull ghcr.io/ev3lynx727/containerd-apps-tokped-scrapper:main
+
+# Check image details
+docker inspect ghcr.io/ev3lynx727/containerd-apps-tokped-scrapper:latest
 ```
 
 ## 🔄 n8n Integration & Automation
@@ -517,19 +559,31 @@ curl -k -X POST https://localhost:8443/scrape \
 - Check container is running on correct port
 - Verify n8n can reach localhost:8443
 
+## 🔄 CI/CD Pipeline
+
+### GitHub Actions Workflow
+- **Trigger**: Push to main/master branches
+- **Build**: Multi-platform Docker images (AMD64, ARM64)
+- **Registry**: Automatic push to GHCR (`ghcr.io/ev3lynx727/containerd-apps-tokped-scrapper`)
+- **Security**: Build attestation and vulnerability scanning
+- **Caching**: Layer caching for faster builds
+
+### Workflow Status
+Check the build status at: https://github.com/Ev3lynx727/containerd-apps-tokped-scrapper/actions
+
 ## 📝 Changelog
 
 ### v1.0.0 - Enhanced Edition
 - ✨ **Shop Intelligence**: Added comprehensive shop recommendation algorithm (0-100 scoring)
-- 🏆 **Bestseller Detection**: Multi-factor analysis for identifying truly popular products
+- 🏆 **Best Seller Detection**: Multi-factor analysis for identifying truly popular products
 - 📈 **Trending Analysis**: Smart detection of promotional and rising products
-- 🔍 **Enhanced Analytics**: Detailed product and shop metrics
-- 🏪 **Shop Ratings**: Aggregated shop performance scoring
 - 🌐 **REST API Server**: Converted from CLI to production-ready API server
 - 🔒 **HTTPS Security**: SSL/TLS encryption for secure communication
 - 🐳 **Docker Containerization**: Full containerized deployment
 - 🔄 **n8n Integration**: Optimized for workflow automation
 - 📊 **Data Intelligence**: Advanced market analysis capabilities
+- 🚀 **GHCR Integration**: Automated container registry builds
+- 🔧 **CI/CD Pipeline**: GitHub Actions for automated deployment
 
 ### Previous Versions
 - Basic CLI scraper with simple HTML parsing
