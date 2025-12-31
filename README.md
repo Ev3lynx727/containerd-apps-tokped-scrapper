@@ -563,10 +563,10 @@ curl -k -X POST https://localhost:8443/scrape \
 
 ### GitHub Actions Workflow
 - **Trigger**: Push to main/master branches
-- **Build**: Multi-platform Docker images (AMD64, ARM64)
+- **Build**: Docker images with AMD64 platform support
 - **Registry**: Automatic push to GHCR (`ghcr.io/ev3lynx727/containerd-apps-tokped-scrapper`)
-- **Security**: Build attestation and vulnerability scanning
-- **Caching**: Layer caching for faster builds
+- **Optimization**: Build caching for faster subsequent builds
+- **Security**: Automated vulnerability scanning
 
 ### Workflow Status
 Check the build status at: https://github.com/Ev3lynx727/containerd-apps-tokped-scrapper/actions
