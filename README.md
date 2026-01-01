@@ -1327,3 +1327,4 @@ This is an unofficial tool. Scraping may violate Tokopedia's terms of service. U
 # Health endpoint fix test
 # Flask-RESTX fix test
 # Route naming fix test
+# Debug logging test
