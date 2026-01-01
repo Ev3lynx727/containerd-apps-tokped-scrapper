@@ -195,4 +195,9 @@ if __name__ == '__main__':
     print("🚀 Professional Tokopedia Scraper API v2.0.0 initialized with Flask-RESTX")
     print("📚 Interactive documentation available at: /docs")
     print("🎯 Ready for enterprise-grade API operations!")
-    app.run(debug=True, host='0.0.0.0', port=8449)
+
+    # Simple server configuration for container compatibility
+    from wsgiref import simple_server
+    httpd = simple_server.make_server('0.0.0.0', 8449, app)
+    print("🌐 Server listening on http://0.0.0.0:8449")
+    httpd.serve_forever()
