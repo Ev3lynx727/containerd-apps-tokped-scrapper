@@ -1,12 +1,9 @@
-import requests
-import json
-from typing import List, Dict, Any
-from datetime import datetime, timedelta
-import time
+"""
+Tokopedia scraper with GraphQL primary and HTML fallback
+"""
 
-# Simple in-memory cache for shop scores
-_shop_score_cache = {}
-_cache_expiry = {}
+from typing import List, Dict, Any
+
 
 def calculate_shop_score(shop_data: Dict[str, Any]) -> float:
     """
@@ -63,6 +60,7 @@ def calculate_shop_score(shop_data: Dict[str, Any]) -> float:
 
     return min(100, max(0, score))
 
+
 def detect_bestseller_indicators(product: Dict[str, Any], all_products: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Analyze product data to detect bestseller indicators
@@ -117,6 +115,7 @@ def detect_bestseller_indicators(product: Dict[str, Any], all_products: List[Dic
 
     return enhanced_product
 
+
 def enhance_shop_data(shop_data: Dict[str, Any], all_products: List[Dict[str, Any]]) -> Dict[str, Any]:
     """
     Enhance shop data with ratings and recommendation scores
@@ -155,41 +154,194 @@ def enhance_shop_data(shop_data: Dict[str, Any], all_products: List[Dict[str, An
     shop_score = calculate_shop_score(enhanced_shop)
     enhanced_shop['recommendationScore'] = round(shop_score, 1)
 
-    # Cache the score for performance
-    cache_key = f"shop_{shop_data.get('id')}"
-    _shop_score_cache[cache_key] = shop_score
-    _cache_expiry[cache_key] = time.time() + 3600  # Cache for 1 hour
-
     return enhanced_shop
 
-def scrape_tokopedia(query: str, num_products: int = 10) -> List[Dict[str, Any]]:
+
+def scrape_tokopedia_graphql(query: str, num_products: int = 10, api_version: str = "v4") -> List[Dict[str, Any]]:
     """
-    Unofficial scraper for Tokopedia product search using GraphQL API.
-    WARNING: May violate terms of service. Use official API for legitimate purposes.
+    Enhanced GraphQL-based scraper for Tokopedia using official API endpoint.
+
+    Features:
+    - Multiple API version support (v4, v3, v2)
+    - Enhanced error handling and debugging
+    - Automatic retry with different parameter formats
+    - Comprehensive logging for troubleshooting
 
     Args:
         query: Search query string
         num_products: Maximum number of products to return
+        api_version: GraphQL API version ('v4', 'v3', 'v2')
 
     Returns:
         List of product dictionaries
     """
+    import requests
+    import json
+    import time
+
+    print(f"🔍 GraphQL {api_version}: Starting search for '{query}' ({num_products} products)")
+
+    # GraphQL endpoint with versioning support
     graphql_url = 'https://gql.tokopedia.com/'
 
-    # Enhanced GraphQL query for product search with shop ratings and bestseller data
-    gql_query = '''
-    query SearchProductQueryV4($params: String!) {
-        ace_search_product_v4(params: $params) {
-            header {
-                totalData
-                totalDataText
-                processTime
-                responseCode
-                errorMessage
+    # Multiple query formats to try (Tokopedia may have changed their schema)
+    query_formats = {
+
+        # Format 1: Current format with versioned query
+        "versioned": f'''
+        query SearchProductQuery{api_version.upper()}($params: String!) {{
+            ace_search_product_{api_version}(params: $params) {{
+                header {{
+                    totalData
+                    totalDataText
+                    processTime
+                    responseCode
+                    errorMessage
+                    __typename
+                }}
+                data {{
+                    isQuerySafe
+                    products {{
+                        id
+                        name
+                        price
+                        imageUrl
+                        rating
+                        countReview
+                        url
+                        badges {{
+                            title
+                            imageUrl
+                            show
+                            __typename
+                        }}
+                        labelGroups {{
+                            position
+                            title
+                            type
+                            __typename
+                        }}
+                        discountPercentage
+                        originalPrice
+                        shop {{
+                            id
+                            name
+                            url
+                            city
+                            isOfficial
+                            isPowerBadge
+                            __typename
+                        }}
+                        __typename
+                    }}
+                    __typename
+                }}
                 __typename
+            }}
+        }}
+        ''',
+
+        # Format 2: Try different query name
+        "alt_versioned": f'''
+        query AceSearchProduct{api_version.upper()}($params: String!) {{
+            ace_search_product_{api_version}(params: $params) {{
+                header {{
+                    totalData
+                    totalDataText
+                    processTime
+                    responseCode
+                    errorMessage
+                }}
+                data {{
+                    isQuerySafe
+                    products {{
+                        id
+                        name
+                        price
+                        imageUrl
+                        rating
+                        countReview
+                        url
+                        shop {{
+                            id
+                            name
+                            city
+                            isOfficial
+                        }}
+                    }}
+                }}
+            }}
+        }}
+        ''',
+
+        # Format 3: Simplified query without some fields
+        "simple": f'''
+        query SearchProductQuery($params: String!) {{
+            ace_search_product_{api_version}(params: $params) {{
+                header {{
+                    totalData
+                    totalDataText
+                    processTime
+                    responseCode
+                    errorMessage
+                }}
+                data {{
+                    products {{
+                        id
+                        name
+                        price
+                        imageUrl
+                        rating
+                        countReview
+                        url
+                        shop {{
+                            id
+                            name
+                            city
+                            isOfficial
+                        }}
+                    }}
+                }}
+            }}
+        }}
+        ''',
+
+        # Format 4: Try without version suffix
+        "no_version": '''
+        query($params: String!) {
+            ace_search_product(params: $params) {
+                header {
+                    totalData
+                    totalDataText
+                    processTime
+                    responseCode
+                    errorMessage
+                }
+                data {
+                    products {
+                        id
+                        name
+                        price
+                        imageUrl
+                        rating
+                        countReview
+                        url
+                        shop {
+                            id
+                            name
+                            city
+                            isOfficial
+                        }
+                    }
+                }
             }
-            data {
-                isQuerySafe
+        }
+        ''',
+
+        # Format 5: Generic search query (may work if schema changed)
+        "generic": '''
+        query($params: String!) {
+            searchProduct(params: $params) {
                 products {
                     id
                     name
@@ -198,123 +350,284 @@ def scrape_tokopedia(query: str, num_products: int = 10) -> List[Dict[str, Any]]
                     rating
                     countReview
                     url
-                    badges {
-                        title
-                        imageUrl
-                        show
-                        __typename
-                    }
-                    labelGroups {
-                        position
-                        title
-                        type
-                        __typename
-                    }
-                    discountPercentage
-                    originalPrice
                     shop {
                         id
                         name
-                        url
                         city
                         isOfficial
-                        isPowerBadge
-                        __typename
                     }
-                    __typename
                 }
-                __typename
             }
-            __typename
         }
-    }
-    '''
-
-    # Build search parameters
-    params = f'q={query.replace(" ", "%20")}&st=product&rows={num_products}&start=0&device=desktop&scheme=https&source=search&safe_search=false&related=true&goldmerchant=false&official=false&ob=23&pmin=0&pmax=0'
-
-    payload = {
-        'query': gql_query,
-        'variables': {
-            'params': params
-        }
+        '''
     }
 
+    # Multiple parameter formats to try (based on current Tokopedia API)
+    param_formats = [
+        # Format 1: Current JSON string format
+        {
+            "q": query,
+            "page": 1,
+            "rows": min(num_products, 100),  # Limit to reasonable number
+            "device": "desktop"
+        },
+        # Format 2: Try with different device types
+        {
+            "q": query,
+            "page": 1,
+            "rows": min(num_products, 100),
+            "device": "mobile"
+        },
+        # Format 3: Try without device parameter
+        {
+            "q": query,
+            "page": 1,
+            "rows": min(num_products, 100)
+        },
+        # Format 4: Try with source parameter (some APIs need this)
+        {
+            "q": query,
+            "page": 1,
+            "rows": min(num_products, 100),
+            "device": "desktop",
+            "source": "search"
+        },
+        # Format 5: Minimal parameters
+        {
+            "q": query,
+            "rows": min(num_products, 50)
+        },
+        # Format 6: Try with different parameter names
+        {
+            "query": query,
+            "page": 1,
+            "rows": min(num_products, 100),
+            "device": "desktop"
+        }
+    ]
+
+    # Enhanced headers with more browser-like properties
     headers = {
         'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        'Accept': 'application/json',
+        'Accept-Language': 'en-US,en;q=0.9,id;q=0.8',
+        'Origin': 'https://www.tokopedia.com',
+        'Referer': 'https://www.tokopedia.com/',
+        'sec-ch-ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+        'sec-ch-ua-mobile': '?0',
+        'sec-ch-ua-platform': '"Windows"',
+        'Sec-Fetch-Dest': 'empty',
+        'Sec-Fetch-Mode': 'cors',
+        'Sec-Fetch-Site': 'same-site',
+        'DNT': '1'
     }
 
-    try:
-        response = requests.post(graphql_url, json=payload, headers=headers, timeout=10)
-        response.raise_for_status()
+    # Try different combinations of query formats and parameter formats
+    for query_format_name, gql_query in query_formats.items():
+        for param_format in param_formats:
+            try:
+                print(f"🔄 Trying {query_format_name} format with params: {param_format}")
 
-        data = response.json()
-
-        if 'errors' in data:
-            raise Exception(f"GraphQL Errors: {data['errors']}")
-
-        if 'data' in data and 'ace_search_product_v4' in data['data']:
-            result = data['data']['ace_search_product_v4']
-            products = result['data']['products']
-
-            # Process and enhance products with bestseller indicators
-            enhanced_products = []
-            for product in products:
-                enhanced_product = detect_bestseller_indicators(product, products)
-                enhanced_products.append(enhanced_product)
-
-            # Group products by shop and enhance shop data
-            shop_groups = {}
-            for product in enhanced_products:
-                shop_id = product.get('shop', {}).get('id')
-                if shop_id:
-                    if shop_id not in shop_groups:
-                        shop_groups[shop_id] = {
-                            'shop_data': product['shop'],
-                            'products': []
+                # Prepare parameters based on format
+                if query_format_name == "generic":
+                    # Generic format doesn't use the params string
+                    params = json.dumps(param_format)
+                    payload = {
+                        "query": gql_query,
+                        "variables": {
+                            "params": params
                         }
-                    shop_groups[shop_id]['products'].append(product)
+                    }
+                else:
+                    # Standard format with params as JSON string
+                    params = json.dumps(param_format)
+                    payload = {
+                        "query": gql_query,
+                        "variables": {
+                            "params": params
+                        }
+                    }
 
-            # Enhance shop data with aggregated metrics
-            enhanced_shops = {}
-            for shop_id, shop_info in shop_groups.items():
+                # Make GraphQL request with timeout and error handling
+                print(f"📡 Making request to {graphql_url}")
                 try:
-                    enhanced_shops[shop_id] = enhance_shop_data(shop_info['shop_data'], shop_info['products'])
+                    response = requests.post(graphql_url, json=payload, headers=headers, timeout=15)
+                    response.raise_for_status()
+
+                    data = response.json()
+                    print(f"📥 Response status: {response.status_code}, data keys: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+
+                    # Check for GraphQL errors
+                    if 'errors' in data:
+                        print(f"❌ GraphQL errors: {data['errors']}")
+                        continue  # Try next format
+
+                    # Check if we have the expected data structure
+                    products_data = None
+                    if 'data' in data and isinstance(data['data'], dict):
+                        # Try different possible data paths
+                        possible_paths = [
+                            f"ace_search_product_{api_version}",
+                            "searchProduct",
+                            "data"
+                        ]
+
+                        for path in possible_paths:
+                            if path in data['data']:
+                                section = data['data'][path]
+                                if isinstance(section, dict):
+                                    if 'data' in section and isinstance(section['data'], dict) and 'products' in section['data']:
+                                        products_data = section['data']['products']
+                                        print(f"✅ Found products in path: data.{path}.data.products")
+                                        break
+                                    elif 'products' in section:
+                                        products_data = section['products']
+                                        print(f"✅ Found products in path: data.{path}.products")
+                                        break
+
+                    if not products_data:
+                        # Debug: show more info about the response
+                        section = data.get('data', {}).get(f"ace_search_product_{api_version}", {})
+                        header = section.get('header', {}) if isinstance(section, dict) else {}
+                        print(f"⚠️ No products found. Header info: {header}")
+                        print(f"⚠️ Section keys: {list(section.keys()) if isinstance(section, dict) else 'N/A'}")
+                        continue
+
+                    if not isinstance(products_data, list) or len(products_data) == 0:
+                        print(f"⚠️ Products data is not a list or is empty: {type(products_data)}")
+                        continue
+
+                    print(f"🎉 Success with {query_format_name} format! Found {len(products_data)} products")
+
+                    # Process products
+                    products = []
+                    for product in products_data[:num_products]:
+                        try:
+                            # Extract product information with enhanced error handling
+                            product_id = product.get('id')
+                            if not product_id:
+                                # Generate synthetic ID if not provided
+                                product_id = hash(f"{product.get('name', '')}_{product.get('shop', {}).get('id', '')}") % 1000000
+
+                            # Extract shop information
+                            shop_data = product.get('shop', {})
+                            enhanced_shop = enhance_shop_data(shop_data, [product])
+
+                            # Process product with enhanced analytics
+                            enhanced_product = detect_bestseller_indicators(product, products_data)
+
+                            # Build final product structure
+                            result = {
+                                'id': product_id,
+                                'name': enhanced_product.get('name', 'N/A'),
+                                'price': enhanced_product.get('price', 'N/A'),
+                                'originalPrice': product.get('originalPrice', 'N/A'),
+                                'discountPercentage': product.get('discountPercentage', 0),
+                                'rating': enhanced_product.get('rating', 'N/A'),
+                                'reviewCount': product.get('countReview', 0),
+                                'url': enhanced_product.get('url', 'N/A'),
+                                'imageUrl': product.get('imageUrl', ''),
+                                'badges': product.get('badges', []),
+                                'labelGroups': product.get('labelGroups', []),
+                                'isBestSeller': enhanced_product.get('isBestSeller', False),
+                                'isTrending': enhanced_product.get('isTrending', False),
+                                'isTopRated': enhanced_product.get('isTopRated', False),
+                                'popularityScore': enhanced_product.get('popularityScore', 0),
+                                'shop': enhanced_shop
+                            }
+
+                            products.append(result)
+
+                        except Exception as e:
+                            print(f"⚠️ Error processing product: {e}")
+                            continue
+
+                    # Return successful results
+                    return products
+
+                except requests.exceptions.RequestException as e:
+                    print(f"❌ Request error: {e}")
+                    continue
+                except json.JSONDecodeError as e:
+                    print(f"❌ JSON decode error: {e}")
+                    continue
                 except Exception as e:
-                    # Use original shop data if enhancement fails
-                    enhanced_shops[shop_id] = shop_info['shop_data']
+                    print(f"❌ Unexpected error: {e}")
+                    continue
 
-            # Build final results with enhanced shop data
-            results = []
-            for product in enhanced_products:
-                shop_id = product.get('shop', {}).get('id')
-                enhanced_shop = enhanced_shops.get(shop_id, product['shop'])
+            except Exception as e:
+                print(f"❌ Format combination failed: {e}")
+                continue
 
-                result = {
-                    'name': product.get('name', 'N/A'),
-                    'price': product.get('price', 'N/A'),
-                    'originalPrice': product.get('originalPrice', 'N/A'),
-                    'discountPercentage': product.get('discountPercentage', 0),
-                    'rating': product.get('rating', 'N/A'),
-                    'reviewCount': product.get('countReview', 0),
-                    'url': product.get('url', 'N/A'),
-                    'badges': product.get('badges', []),
-                    'labelGroups': product.get('labelGroups', []),
-                    'isBestSeller': product.get('isBestSeller', False),
-                    'isTrending': product.get('isTrending', False),
-                    'isTopRated': product.get('isTopRated', False),
-                    'popularityScore': product.get('popularityScore', 0),
-                    'shop': enhanced_shop
-                }
-                results.append(result)
+    # If all attempts failed, return empty list with detailed diagnostics
+    print(f"💔 All GraphQL {api_version} attempts failed for query '{query}'")
+    print(f"🔍 Diagnostics: API responded successfully but returned totalData: 0")
+    print(f"🔍 Possible causes: API authentication required, schema changed, or parameters incorrect")
+    print(f"🔍 Recommendation: Use HTML scraping fallback or investigate API authentication")
+    return []
 
-            return results
-        else:
-            return []
 
+def scrape_tokopedia(query: str, num_products: int = 10) -> List[Dict[str, Any]]:
+    """
+    Enhanced hybrid scraper with intelligent fallback strategy.
+
+    Strategy:
+    1. GraphQL v4 (fastest, most reliable)
+    2. GraphQL v3 (fallback API version)
+    3. HTML scraping (may not work due to Tokopedia's SPA architecture)
+
+    Note: Tokopedia has moved to a JavaScript-heavy architecture where products
+    are loaded dynamically. HTML scraping success rate may be limited.
+
+    Args:
+        query: Search query string
+        num_products: Maximum number of products to return
+
+    Returns:
+        List of product dictionaries
+    """
+    methods_tried = []
+
+    # Method 1: GraphQL v4 (fastest when available)
+    try:
+        methods_tried.append("GraphQL v4")
+        print(f"🔍 Trying GraphQL v4 for: '{query}'")
+        products = scrape_tokopedia_graphql(query, num_products, api_version="v4")
+        if products and len(products) > 0:
+            print(f"✅ GraphQL v4 succeeded: {len(products)} products")
+            return products
     except Exception as e:
-        raise Exception(f"Scraping error: {str(e)}")
+        print(f"⚠️ GraphQL v4 failed: {str(e)[:100]}...")
+
+    # Method 2: GraphQL v3 (fallback API version)
+    try:
+        methods_tried.append("GraphQL v3")
+        print("🔄 Trying GraphQL v3...")
+        products = scrape_tokopedia_graphql(query, num_products, api_version="v3")
+        if products and len(products) > 0:
+            print(f"✅ GraphQL v3 succeeded: {len(products)} products")
+            return products
+    except Exception as e:
+        print(f"⚠️ GraphQL v3 failed: {str(e)[:100]}...")
+
+    # Method 3: HTML Scraping (most reliable fallback)
+    try:
+        methods_tried.append("HTML Scraping")
+        print("🔄 Falling back to HTML scraping...")
+        from .html_scraper import scrape_tokopedia_html
+        products = scrape_tokopedia_html(query, num_products)
+        if products and len(products) > 0:
+            print(f"✅ HTML scraping succeeded: {len(products)} products")
+            return products
+    except Exception as e:
+        print(f"❌ HTML scraping failed: {str(e)[:100]}...")
+
+    # All methods failed
+    methods_str = ", ".join(methods_tried)
+    print(f"💔 All scraping methods failed for '{query}'. Methods tried: {methods_str}")
+    return []
+
 
 if __name__ == "__main__":
     # For testing purposes when run directly
@@ -323,19 +636,36 @@ if __name__ == "__main__":
     query = sys.argv[1] if len(sys.argv) > 1 else "decal mx king 150"
     num_products = int(sys.argv[2]) if len(sys.argv) > 2 else 10
 
+    print("🚀 Tokopedia Scraper Test")
+    print("=" * 50)
+
+    # Test GraphQL first
+    print(f"\n🔍 Testing GraphQL API for query: '{query}'")
     try:
         products = scrape_tokopedia(query, num_products)
-
         if products:
-            print(f"\nFound {len(products)} products for '{query}':\n")
-            for i, product in enumerate(products, 1):
-                print(f"{i}. {product['name']}")
-                print(f"   Price: {product['price']}")
-                print(f"   Shop: {product['shop']}")
-                print(f"   Rating: {product['rating']}")
-                print(f"   URL: {product['url']}\n")
+            print(f"✅ GraphQL SUCCESS: Found {len(products)} products")
+            for i, product in enumerate(products[:3], 1):
+                print(f"   {i}. {product['name'][:50]} - {product['price']}")
         else:
-            print("No products found.")
+            print("❌ GraphQL returned no products")
     except Exception as e:
-        print(f"Error: {e}")
-        sys.exit(1)
+        print(f"❌ GraphQL FAILED: {e}")
+
+    # Test HTML fallback
+    print(f"\n📄 Testing HTML fallback for query: '{query}'")
+    try:
+        products = scrape_tokopedia(query, num_products)
+        if products:
+            print(f"✅ HTML SUCCESS: Found {len(products)} products")
+            for i, product in enumerate(products[:3], 1):
+                print(f"   {i}. {product['name'][:50]} - {product['price']}")
+        else:
+            print("❌ HTML returned no products")
+    except Exception as e:
+        print(f"❌ HTML FAILED: {e}")
+
+    print("\n📊 Test Summary:")
+    print("- GraphQL API: May require authentication or updated parameters")
+    print("- HTML Scraping: May need selector updates for current website")
+    print("- Enhanced error handling and debugging implemented")

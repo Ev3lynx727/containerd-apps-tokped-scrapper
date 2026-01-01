@@ -1,0 +1,21 @@
+{
+  "id": "test-env",
+  "name": "Staging Environment",
+  "values": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8449",
+      "enabled": true
+    },
+    {
+      "key": "test_query",
+      "value": "laptop gaming",
+      "enabled": true
+    },
+    {
+      "key": "shop_id",
+      "value": "970110",
+      "enabled": true
+    }
+  ]
+}

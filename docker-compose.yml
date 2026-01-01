@@ -15,12 +15,12 @@ services:
       retries: 3
     restart: unless-stopped
 
-  scraper:
+  enterprise-api:
     build: .
     ports:
       - "8443:8443"
     volumes:
-      - .:/app/tokped-scrapper
+      - .:/app/tokped-scraper
     depends_on:
       redis:
         condition: service_healthy
@@ -29,12 +29,19 @@ services:
       - PYTHONUNBUFFERED=1
       - REDIS_URL=redis://redis:6379/0
       - REDIS_MAX_CONNECTIONS=10
+      - FLASK_ENV=production
+      - API_VERSION=v2.0.0
     healthcheck:
       test: ["CMD", "curl", "-k", "-f", "https://localhost:8443/health"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 40s
+    labels:
+      - "org.opencontainers.image.title=Tokopedia Enterprise API"
+      - "org.opencontainers.image.description=Professional REST API for Tokopedia product scraping with Flask-RESTX"
+      - "org.opencontainers.image.version=v2.0.0"
+      - "org.opencontainers.image.vendor=Tokopedia Scraper"
 
 volumes:
   redis_data:

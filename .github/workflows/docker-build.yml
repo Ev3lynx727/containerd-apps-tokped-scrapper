@@ -1,10 +1,13 @@
-name: Build and Push Docker Image to GHCR
+name: Build Enterprise API Container v2.0.0
 
 on:
   push:
-    branches: [ main, master, feature/redis-integration ]
+    branches: [ main, master, redis-integration, v2.0.0 ]
+    tags: [ 'v*' ]
   pull_request:
-    branches: [ main, master ]
+    branches: [ main, master, redis-integration ]
+  release:
+    types: [published]
   workflow_dispatch:
 
 env:
@@ -38,19 +41,64 @@ jobs:
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
+          # Enterprise API v2.0.0 semantic versioning
+          type=ref,event=tag
+          type=raw,value=v2.0.0,enable=${{ is_default_branch }}
+          type=raw,value=2.0,enable=${{ is_default_branch }}
+          type=raw,value=2,enable=${{ is_default_branch }}
+
+          # Branch and PR tags
           type=ref,event=branch
           type=ref,event=pr
           type=sha,prefix={{branch}}-
-          type=raw,value=latest,enable={{is_default_branch}}
+
+          # Latest for default branch
+          type=raw,value=latest,enable=${{ is_default_branch }}
 
     - name: Build and push Docker image
       id: push
       uses: docker/build-push-action@v5
       with:
         context: .
-        platforms: linux/amd64
+        platforms: linux/amd64,linux/arm64
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
         cache-from: type=gha
         cache-to: type=gha,mode=max
+        build-args: |
+          BUILDKIT_INLINE_CACHE=1
+
+    - name: Test container functionality
+      run: |
+        # Start container for testing
+        docker run -d --name test-api -p 8449:8443 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+
+        # Wait for container to start
+        sleep 30
+
+        # Test enterprise API endpoints
+        echo "Testing health endpoint..."
+        curl -f http://localhost:8449/health || exit 1
+
+        echo "Testing API info endpoint..."
+        curl -f http://localhost:8449/info || exit 1
+
+        echo "Testing Swagger docs..."
+        curl -f http://localhost:8449/docs || exit 1
+
+        # Clean up
+        docker stop test-api
+        docker rm test-api
+
+    - name: Generate container summary
+      run: |
+        echo "## 🐳 Enterprise API Container Build Summary" >> $GITHUB_STEP_SUMMARY
+        echo "- **Version**: v2.0.0 (Enterprise Release)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Registry**: ${{ env.REGISTRY }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Repository**: ${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Tags**: ${{ steps.meta.outputs.tags }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Digest**: ${{ steps.push.outputs.digest }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Size**: ${{ steps.push.outputs.size }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Platforms**: linux/amd64, linux/arm64" >> $GITHUB_STEP_SUMMARY
+        echo "- **Testing**: ✅ Health, API Info, Swagger Docs" >> $GITHUB_STEP_SUMMARY

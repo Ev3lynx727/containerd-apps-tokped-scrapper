@@ -12,6 +12,13 @@ This is an advanced unofficial scraper for Tokopedia product data, running as a 
 - **Trending Analysis**: Identifies rising products and special deals
 - **Real-time Analytics**: Comprehensive market intelligence
 
+### Hybrid Scraping Architecture
+- **Intelligent Fallback**: GraphQL API primary → HTML scraping fallback
+- **Multi-Version Support**: GraphQL v4, v3 with automatic version detection
+- **Enhanced HTML5 Parsing**: Beautiful Soup 4 + lxml for robust malformed HTML handling
+- **Automatic Method Selection**: System chooses fastest available scraping method
+- **Comprehensive Error Handling**: Detailed diagnostics and recovery mechanisms
+
 ### Redis-Powered Performance
 - **JSON Caching**: Large query responses cached for 30 minutes
 - **Real-time Streaming**: Pub/Sub channels for continuous n8n data flow
@@ -25,6 +32,7 @@ This is an advanced unofficial scraper for Tokopedia product data, running as a 
 - **CORS Enabled**: Ready for web and automation integrations
 - **Docker Containerized**: Production-ready deployment
 - **n8n Integration**: Optimized for workflow automation with real-time triggers
+- **Debug Endpoints**: Comprehensive troubleshooting and method testing tools
 
 ## 📋 API Endpoints
 
@@ -36,7 +44,7 @@ Health check endpoint.
 {
   "status": "healthy",
   "timestamp": "2024-12-31T10:41:31.002107",
-  "version": "1.0.0"
+  "version": "2.0.0"
 }
 ```
 
@@ -47,30 +55,51 @@ API information and available endpoints.
 ```json
 {
   "message": "Tokopedia Scraper API with Enhanced Features",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "features": [
     "Shop rating and recommendation system",
     "Bestseller detection",
     "Trending product identification",
-    "Enhanced product analytics"
+    "Enhanced product analytics",
+    "Individual product lookup by ID",
+    "Real-time trending products access",
+    "Search history tracking",
+    "Product categorization"
   ],
-  "endpoints": {
-    "GET /health": "Health check",
-    "POST /scrape": "Scrape products with enhanced analytics",
-    "GET /shops/recommended": "Get recommended shops",
-    "GET /products/bestsellers": "Get bestseller products"
-  }
+    "endpoints": {
+     "GET /health": "Health check",
+     "GET /": "API information and available endpoints",
+     "POST /scrape": "Hybrid scraping with GraphQL primary + HTML fallback",
+     "POST /scrape/debug": "Debug endpoint testing all scraping methods individually",
+     "GET /shops/recommended": "Get recommended shops",
+     "GET /shops/top-rated": "Get shops with highest ratings",
+     "GET /shops/by-city/<city>": "Filter shops by city location",
+     "GET /shops/stats": "Aggregate statistics across all shops",
+     "GET /products/bestsellers": "Get bestseller products",
+     "GET /products/<product_id>": "Get detailed product info by ID",
+     "GET /products/trending": "Get currently trending products",
+     "GET /products/search/history": "Get recent search queries and results",
+     "GET /products/categories": "Get available product categories/tags",
+     "GET /logs/recent": "Recent API request logs",
+     "GET /redis/status": "Redis connection status"
+   }
 }
 ```
 
 ### POST /scrape
-Enhanced product scraping with shop ratings and bestseller detection.
+Hybrid product scraping with intelligent GraphQL + HTML fallback. Automatically tries the fastest available method and falls back gracefully.
+
+**Scraping Strategy:**
+1. **GraphQL v4** (Fastest when available)
+2. **GraphQL v3** (Fallback API version)
+3. **HTML Scraping** (Most reliable fallback)
 
 **Request:**
 ```json
 {
-  "query": "decal mx king 150",
-  "num_products": 10
+    "query": "decal mx king 150",
+    "num_products": 10,
+    "use_cache": true
 }
 ```
 
@@ -133,14 +162,55 @@ Enhanced product scraping with shop ratings and bestseller detection.
 }
 ```
 
+### POST /scrape/debug
+Debug endpoint for testing all scraping methods individually. Useful for troubleshooting and understanding which methods work.
+
+**Request:**
+```json
+{
+    "query": "laptop gaming",
+    "num_products": 3
+}
+```
+
+**Response:**
+```json
+{
+  "query": "laptop gaming",
+  "methods_tested": {
+    "graphql_v4": {
+      "success": false,
+      "products_found": 0,
+      "error": "API authentication required"
+    },
+    "graphql_v3": {
+      "success": false,
+      "products_found": 0,
+      "error": "Schema validation error"
+    },
+    "html_scraping": {
+      "success": true,
+      "products_found": 5,
+      "error": null
+    }
+  },
+  "successful_method": "html_scraping",
+  "summary": {
+    "total_methods_tested": 3,
+    "methods_succeeded": 1,
+    "overall_success": true
+  }
+}
+```
+
 ### GET /shops/recommended
-Get top recommended shops based on the intelligent scoring algorithm.
+Get recommended shops based on overall performance and ratings.
 
 **Response:**
 ```json
 {
   "status": "success",
-  "timestamp": "2024-12-31T11:13:00.281039",
+  "timestamp": "2024-12-31T10:41:45.250493",
   "recommended_shops": [
     {
       "id": 1,
@@ -155,6 +225,151 @@ Get top recommended shops based on the intelligent scoring algorithm.
     }
   ],
   "note": "This endpoint returns cached/pre-calculated shop recommendations"
+}
+```
+
+### GET /shops/<shop_id>
+Get detailed shop profile and statistics by shop ID.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2024-12-31T10:41:45.250493",
+  "shop": {
+    "id": 12345,
+    "name": "Example Shop",
+    "profile": {
+      "id": 12345,
+      "name": "Example Shop",
+      "city": "Jakarta",
+      "isOfficial": true,
+      "isPowerBadge": false,
+      "avgRating": 4.7,
+      "totalReviews": 500,
+      "recommendationScore": 85.2
+    },
+    "statistics": {
+      "total_products_found": 25,
+      "avg_rating": 4.7,
+      "total_reviews": 500,
+      "recommendation_score": 85.2,
+      "is_official": true,
+      "is_power_badge": false,
+      "city": "Jakarta"
+    },
+    "recent_products": [
+      {
+        "id": "prod123",
+        "name": "Product Name",
+        "price": "Rp100.000",
+        "rating": 4.8,
+        "url": "https://tokopedia.com/product"
+      }
+    ]
+  }
+}
+```
+
+### GET /shops/top-rated
+Get shops sorted by recommendation score and average rating.
+
+**Query Parameters:**
+- `limit` (integer): Number of results (default: 10, max: 50)
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2024-12-31T10:41:45.250493",
+  "top_rated_shops": [
+    {
+      "id": 12345,
+      "name": "Top Shop",
+      "city": "Jakarta",
+      "recommendation_score": 95.5,
+      "avg_rating": 4.9,
+      "total_reviews": 1200,
+      "is_official": true,
+      "is_power_badge": true,
+      "product_count": 150
+    }
+  ],
+  "count": 10,
+  "filters_applied": {
+    "sort_by": "recommendation_score, avg_rating",
+    "limit": 10
+  },
+  "total_shops_available": 45
+}
+```
+
+### GET /shops/by-city/<city>
+Get shops filtered by city location.
+
+**Query Parameters:**
+- `limit` (integer): Number of results (default: 20, max: 100)
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2024-12-31T10:41:45.250493",
+  "city": "Jakarta",
+  "shops": [
+    {
+      "id": 12345,
+      "name": "Jakarta Shop",
+      "recommendation_score": 88.5,
+      "avg_rating": 4.6,
+      "total_reviews": 300,
+      "is_official": false,
+      "is_power_badge": true,
+      "product_count": 75
+    }
+  ],
+  "count": 15,
+  "filters_applied": {
+    "city": "Jakarta",
+    "limit": 20,
+    "sort_by": "recommendation_score"
+  }
+}
+```
+
+### GET /shops/stats
+Get aggregate statistics across all discovered shops.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2024-12-31T10:41:45.250493",
+  "shop_statistics": {
+    "total_shops": 45,
+    "total_products": 1250,
+    "avg_rating_across_shops": 4.3,
+    "total_reviews": 15000,
+    "official_shops": 12,
+    "power_badge_shops": 8,
+    "city_distribution": [
+      ["Jakarta", 15],
+      ["Surabaya", 8],
+      ["Bandung", 6]
+    ],
+    "rating_distribution": {
+      "5_star": 5,
+      "4_5_star": 20,
+      "3_4_star": 15,
+      "below_3": 3,
+      "unrated": 2
+    },
+    "recommendation_score_range": {
+      "min": 15.2,
+      "max": 95.5,
+      "avg": 68.3
+    }
+  }
 }
 ```
 
@@ -180,10 +395,289 @@ Get current bestseller products across categories.
         "recommendationScore": 95.0
       }
     }
-  ],
-  "note": "This endpoint returns cached bestseller data"
+   ],
+   "note": "This endpoint returns cached bestseller data"
+ }
+ ```
+
+### GET /products/<product_id>
+Get detailed information for a specific product by its ID. Products are cached from previous scrape operations.
+
+**URL Parameters:**
+- `product_id` (integer): The product ID to retrieve
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2024-12-31T10:41:45.250493",
+  "product": {
+    "id": 12345,
+    "name": "STRIPING STICKER MOTOR LIS DECAL MX KING 150 exciter",
+    "price": "Rp60.000",
+    "rating": 4.5,
+    "reviewCount": 5,
+    "url": "https://www.tokopedia.com/...",
+    "isBestSeller": false,
+    "isTrending": false,
+    "popularityScore": 3.2,
+    "shop": {
+      "id": 970110,
+      "name": "huda.ARF stripingshoop",
+      "city": "Surakarta",
+      "isOfficial": false,
+      "recommendationScore": 0.3
+    }
+  }
 }
 ```
+
+**Error Response (404):**
+```json
+{
+  "error": "Product not found in cache. Try scraping first.",
+  "suggestion": "Use POST /scrape to populate the cache with products"
+}
+```
+
+### GET /products/trending
+Get currently trending products from the cache. Trending products are identified during scraping operations.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2024-12-31T10:41:45.250493",
+  "trending_products": [
+    {
+      "id": 12345,
+      "name": "Popular Trending Product",
+      "price": "Rp150.000",
+      "rating": 4.8,
+      "isTrending": true,
+      "popularityScore": 4.5,
+      "shop": {
+        "name": "Top Shop",
+        "recommendationScore": 95.0
+      }
+    }
+  ],
+  "count": 1
+}
+```
+
+### GET /products/search/history
+Get recent search queries and their aggregated results from the cache.
+
+**Query Parameters:**
+- `query` (string): Filter history by fuzzy matching against search queries
+- `limit` (integer): Number of results to return (default: 10, max: 50)
+- `since` (string): ISO date string to filter searches after this date
+
+**Examples:**
+```
+GET /products/search/history?query=laptop&limit=5
+GET /products/search/history?since=2024-01-01T00:00:00
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2024-12-31T10:41:45.250493",
+  "search_history": [
+    {
+      "query": "laptop gaming",
+      "timestamp": "2024-12-31T10:41:30.123456",
+      "total_products": 3,
+      "bestsellers_count": 0,
+      "trending_count": 1
+    }
+  ],
+  "count": 1,
+  "filters_applied": {
+    "query": "laptop",
+    "limit": 5,
+    "since": null
+  },
+  "total_available": 10
+}
+```
+
+### GET /products/categories
+Get available product categories and tags extracted from scraped product data. Categories are derived from product badges, labels, and name analysis.
+
+**Query Parameters:**
+- `query` (string): Filter categories by fuzzy matching against category names
+- `type` (string): Filter by category type - `all`, `product`, or `location` (default: all)
+- `limit` (integer): Number of results to return (default: 50, max: 100)
+
+**Examples:**
+```
+GET /products/categories?query=electronics&type=product
+GET /products/categories?type=location&limit=10
+```
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2024-12-31T10:41:45.250493",
+  "categories": [
+    "Electronics",
+    "Gaming",
+    "Bandung"
+  ],
+  "count": 3,
+  "filters_applied": {
+    "query": "electronics",
+    "type": "all",
+    "limit": 50
+  },
+  "total_available": 8,
+  "note": "Categories extracted from product badges, labels, and name analysis"
+}
+```
+
+### GET /analytics/overview
+Get dashboard data with total scrapes, cache performance, and popular queries analytics.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2024-12-31T10:41:45.250493",
+  "overview": {
+    "total_scrapes": 15,
+    "unique_queries": 8,
+    "cache_performance": {
+      "enabled": true,
+      "status": "connected",
+      "total_keys": 45,
+      "memory_usage": "2.1MB"
+    },
+    "popular_queries": [
+      {"query": "laptop gaming", "count": 5, "last_used": "2024-12-31T10:30:00"}
+    ],
+    "recent_activity": [...],
+    "api_requests": {
+      "total": 120,
+      "errors": 2,
+      "success_rate": 98.3
+    }
+  }
+}
+```
+
+### GET /analytics/performance
+Get performance metrics including response times, success rates, and cache statistics.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "timestamp": "2024-12-31T10:41:45.250493",
+  "performance": {
+    "request_metrics": {
+      "total_requests": 120,
+      "success_rate": 98.3
+    },
+    "response_time_metrics": {
+      "average": 0.045,
+      "min": 0.012,
+      "max": 0.234
+    },
+    "cache_metrics": {
+      "hit_rate": 85.2
+    }
+  }
+}
+```
+
+### GET /cache/keys
+List current cache keys (admin/debug endpoint only). Requires `DEBUG_MODE=true` environment variable.
+
+**Response:**
+```json
+{
+  "status": "success",
+  "cache_info": {
+    "total_keys": 45,
+    "key_categories": {
+      "scrape_results": {"count": 12, "sample_keys": ["scrape:laptop gaming:5"]},
+      "products": {"count": 20, "sample_keys": ["product:12345"]},
+      "search_history": {"count": 1, "sample_keys": ["search_history"]}
+    }
+  },
+  "warning": "This endpoint exposes internal cache data. Use only for debugging."
+}
+```
+
+### GET /logs/recent
+Get recent API request logs for monitoring and debugging.
+
+**Query Parameters:**
+- `limit` (integer): Number of log entries to return (default: 50, max: 100)
+
+**Response:**
+```json
+{
+  "status": "success",
+  "logs": [
+    {
+      "timestamp": "2024-12-31T10:41:45.250493",
+      "level": "INFO",
+      "endpoint": "/health",
+      "method": "GET",
+      "status_code": 200,
+      "response_time": 0.023,
+      "message": "GET /health - 200"
+    }
+  ],
+  "count": 25,
+  "total_available": 25
+}
+```
+
+## 🔧 Current Scraping Architecture
+
+### Hybrid Scraping System
+```
+┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
+│   GraphQL v4    │───▶│   GraphQL v3     │───▶│  HTML Scraping  │
+│   (Fastest)     │    │   (Fallback)     │    │   (Reliable)    │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+        │                       │                       │
+        ▼                       ▼                       ▼
+┌─────────────────────────────────────────────────────────────┐
+│                Enhanced Error Handling                     │
+│            Beautiful Soup 4 + lxml Parser                  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+### Current Status
+
+#### ✅ **GraphQL APIs**
+- **Status**: Authentication Required
+- **Issue**: APIs return `totalData: 0` (likely need session cookies/API keys)
+- **Recommendation**: Investigate official Tokopedia API or authentication methods
+
+#### ✅ **HTML Scraping**
+- **Status**: Parser Ready, Selectors Need Updates
+- **Issue**: Tokopedia uses JavaScript/SPA - products load dynamically
+- **Parser**: Beautiful Soup 4 + lxml (production-ready)
+- **Next Step**: Update CSS selectors for current website structure
+
+#### ✅ **Hybrid System**
+- **Status**: ✅ Fully Operational
+- **Behavior**: Automatic GraphQL → HTML fallback
+- **Debug Tools**: `/scrape/debug` endpoint for troubleshooting
+
+### Enhanced HTML5 Parsing
+- **Library**: Beautiful Soup 4 + lxml
+- **Benefits**: Better malformed HTML handling, richer API, extensive community support
+- **Performance**: Excellent balance of speed and reliability
+- **Features**: CSS selectors, XPath support, automatic encoding detection
 
 ## 🔴 Redis-Powered Architecture
 
@@ -809,35 +1303,7 @@ Check the build status at: https://github.com/Ev3lynx727/containerd-apps-tokped-
 
 ## 📝 Changelog
 
-### v1.1.0 - Redis Integration (feature/redis-integration branch) ✅ DEPLOYED
-- 🔴 **Redis Caching**: JSON response caching with 30-minute TTL (100x performance boost)
-- 📡 **Real-time Pub/Sub**: Live data streaming for n8n continuous integration
-- 💾 **Persistent Storage**: Data survives container restarts with 1.15MB memory usage
-- ⚡ **Performance Boost**: Cache hits in 0.018s vs 1.5s for fresh requests
-- 🔄 **Memory Management**: LRU eviction with 512MB limit and intelligent cleanup
-- 📊 **Cache Monitoring**: Real-time Redis statistics via `/redis/status` endpoint
-- 🌐 **Fallback Mode**: Automatic in-memory fallback if Redis unavailable
-- 📈 **Shop Data Caching**: Recommendation scores cached for 1 hour
-- 🔧 **Docker Compose**: Multi-service setup with Redis health checks
-- 🧪 **Testing Suite**: Comprehensive Redis integration with cache validation
-- 🚀 **Production Ready**: Container running successfully on GHCR with full Redis integration
-
-### v1.0.0 - Enhanced Edition
-- ✨ **Shop Intelligence**: Added comprehensive shop recommendation algorithm (0-100 scoring)
-- 🏆 **Best Seller Detection**: Multi-factor analysis for identifying truly popular products
-- 📈 **Trending Analysis**: Smart detection of promotional and rising products
-- 🌐 **REST API Server**: Converted from CLI to production-ready API server
-- 🔒 **HTTPS Security**: SSL/TLS encryption for secure communication
-- 🐳 **Docker Containerization**: Full containerized deployment
-- 🔄 **n8n Integration**: Optimized for workflow automation
-- 📊 **Data Intelligence**: Advanced market analysis capabilities
-- 🚀 **GHCR Integration**: Automated container registry builds
-- 🔧 **CI/CD Pipeline**: GitHub Actions for automated deployment
-
-### Previous Versions
-- Basic CLI scraper with simple HTML parsing
-- Limited product data extraction
-- No shop intelligence or analytics
+See [CHANGELOG.md](CHANGELOG.md) for a detailed list of changes and version history.
 
 ## 🤝 Contributing
 

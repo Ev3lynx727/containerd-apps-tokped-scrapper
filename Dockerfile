@@ -1,11 +1,17 @@
-FROM python:3.9-slim
+FROM python:3.10-slim
 
-WORKDIR /app/tokped-scrapper
+WORKDIR /app/tokped-scraper
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt && \
-    apt-get update && \
-    apt-get install -y netcat-openbsd && \
+# Install system dependencies for python-levenshtein compilation
+RUN apt-get update && \
+    apt-get install -y \
+        build-essential \
+        python3-dev \
+        netcat-openbsd && \
+    pip install --no-cache-dir -r requirements.txt && \
+    apt-get remove -y build-essential python3-dev && \
+    apt-get autoremove -y && \
     apt-get clean && \
     rm -rf /var/lib/apt/lists/*
 
@@ -21,4 +27,4 @@ EXPOSE 8443
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD python -c "import requests; requests.get('https://localhost:8443/health', verify=False)" || exit 1
 
-CMD ["python", "server.py"]
+CMD ["python", "server_restx.py"]
