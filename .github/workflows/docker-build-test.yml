@@ -49,20 +49,34 @@ jobs:
     - name: Test container functionality
       run: |
         # Start container for testing
+        echo "Starting container..."
         docker run -d --name test-api -p 8449:8443 ghcr.io/ev3lynx727/containerd-apps-tokped-scrapper:latest
 
+        # Check if container is running
+        echo "Checking container status..."
+        docker ps | grep test-api || (echo "Container failed to start" && docker logs test-api && exit 1)
+
         # Wait for container to start
+        echo "Waiting for application to start..."
         sleep 30
+
+        # Check container logs
+        echo "Container logs:"
+        docker logs test-api
+
+        # Test basic connectivity
+        echo "Testing basic connectivity..."
+        curl -v --max-time 10 http://localhost:8449/ || echo "Basic connectivity test failed"
 
         # Test enterprise API endpoints
         echo "Testing health endpoint..."
-        curl -f http://localhost:8449/health || exit 1
+        curl -f --max-time 10 http://localhost:8449/health || exit 1
 
         echo "Testing API info endpoint..."
-        curl -f http://localhost:8449/info || exit 1
+        curl -f --max-time 10 http://localhost:8449/info || exit 1
 
         echo "Testing Swagger docs..."
-        curl -f http://localhost:8449/docs || exit 1
+        curl -f --max-time 10 http://localhost:8449/docs || exit 1
 
         # Clean up
         docker stop test-api
