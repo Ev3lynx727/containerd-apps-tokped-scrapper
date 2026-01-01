@@ -66,7 +66,7 @@ api = Api(
 
 # Add root route for basic connectivity
 @app.route('/')
-def root():
+def index():
     """Root endpoint for basic connectivity testing"""
     return {'message': 'Tokopedia Scraper API v2.0.0', 'status': 'running'}
 
