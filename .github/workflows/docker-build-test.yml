@@ -2,7 +2,7 @@ name: Build Enterprise API Container v2.0.0 - Test
 
 on:
   push:
-    branches: [ main, master, redis-integration ]
+    branches: [ main, master, redis-integration, feature/redis-integration ]
   workflow_dispatch:
 
 env:
