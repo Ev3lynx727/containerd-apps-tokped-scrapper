@@ -8,7 +8,7 @@ import sys
 import logging
 import json
 from datetime import datetime
-from flask import Flask
+from flask import Flask, request
 from flask_restx import Api, Resource, fields
 from flask_cors import CORS
 
@@ -68,7 +68,20 @@ api = Api(
 @app.route('/')
 def index():
     """Root endpoint for basic connectivity testing"""
-    return {'message': 'Tokopedia Scraper API v2.0.0', 'status': 'running'}
+    logger.info("Root endpoint called")
+    try:
+        response = {'message': 'Tokopedia Scraper API v2.0.0', 'status': 'running'}
+        logger.info(f"Root endpoint returning: {response}")
+        return response
+    except Exception as e:
+        logger.error(f"Root endpoint error: {e}")
+        return {'error': 'Internal error', 'message': str(e)}, 500
+
+# Add request logging
+@app.before_request
+def log_request_info():
+    """Log all incoming requests"""
+    logger.info(f"Request: {request.method} {request.url}")
 
 # Add error handler for unhandled exceptions
 @app.errorhandler(Exception)
@@ -100,12 +113,15 @@ class HealthResource(Resource):
     @api.doc('get_health')
     def get(self):
         """Get system health status"""
+        logger.info("Health endpoint called")
         try:
-            return {
+            response = {
                 'status': 'healthy',
                 'timestamp': datetime.utcnow().isoformat(),
                 'version': '2.0.0'
             }
+            logger.info(f"Health endpoint returning: {response}")
+            return response
         except Exception as e:
             # Fallback if anything fails
             logger.error(f"Health check error: {e}")
