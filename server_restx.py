@@ -198,6 +198,6 @@ if __name__ == '__main__':
 
     # Simple server configuration for container compatibility
     from wsgiref import simple_server
-    httpd = simple_server.make_server('0.0.0.0', 8449, app)
-    print("🌐 Server listening on http://0.0.0.0:8449")
+    httpd = simple_server.make_server('0.0.0.0', 8443, app)
+    print("🌐 Server listening on http://0.0.0.0:8443")
     httpd.serve_forever()
