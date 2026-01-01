@@ -88,11 +88,16 @@ class HealthResource(Resource):
     @api.marshal_with(health_response)
     def get(self):
         """Get system health status"""
-        return {
-            'status': 'healthy',
-            'timestamp': datetime.utcnow(),
-            'version': '2.0.0'
-        }
+        try:
+            return {
+                'status': 'healthy',
+                'timestamp': datetime.utcnow().isoformat(),
+                'version': '2.0.0'
+            }
+        except Exception as e:
+            # Fallback if marshalling fails
+            logger.error(f"Health check error: {e}")
+            return {'status': 'healthy', 'version': '2.0.0'}
 
 @api.route('/info')
 class APIInfoResource(Resource):
