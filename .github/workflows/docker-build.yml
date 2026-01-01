@@ -1,4 +1,4 @@
-name: Build Enterprise API Container v2.0.0
+name: Build Enterprise API Container v2.0.0 - Fixed
 
 on:
   push:
@@ -35,13 +35,13 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
-     - name: Set Docker tags
-       id: meta
-       run: |
+    - name: Set Docker tags
+      id: meta
+      run: |
          # Manual tag generation to avoid metadata-action issues
          REF="${{ github.ref }}"
          REF_NAME="${{ github.ref_name }}"
-         IMAGE_NAME="${{ env.IMAGE_NAME }}"
+         IMAGE_NAME="ev3lynx727/containerd-apps-tokped-scrapper"
 
          if [[ "$REF" == refs/tags/* ]]; then
            # Tag push - create version tags
@@ -71,7 +71,7 @@ jobs:
     - name: Test container functionality
       run: |
         # Start container for testing
-        docker run -d --name test-api -p 8449:8443 ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}:latest
+        docker run -d --name test-api -p 8449:8443 ghcr.io/ev3lynx727/containerd-apps-tokped-scrapper:latest
 
         # Wait for container to start
         sleep 30
