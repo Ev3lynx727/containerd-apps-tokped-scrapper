@@ -63,6 +63,19 @@ api = Api(
 )
 
 # Define basic data models
+
+# Add root route for basic connectivity
+@app.route('/')
+def root():
+    """Root endpoint for basic connectivity testing"""
+    return {'message': 'Tokopedia Scraper API v2.0.0', 'status': 'running'}
+
+# Add error handler for unhandled exceptions
+@app.errorhandler(Exception)
+def handle_exception(e):
+    """Handle unhandled exceptions"""
+    logger.error(f"Unhandled exception: {e}")
+    return {'error': 'Internal server error', 'message': str(e)}, 500
 health_response = api.model('HealthResponse', {
     'status': fields.String(description='System health status'),
     'timestamp': fields.DateTime(description='Current server timestamp'),
@@ -85,7 +98,6 @@ scrape_response = api.model('ScrapeResponse', {
 @api.route('/health')
 class HealthResource(Resource):
     @api.doc('get_health')
-    @api.marshal_with(health_response)
     def get(self):
         """Get system health status"""
         try:
@@ -95,7 +107,7 @@ class HealthResource(Resource):
                 'version': '2.0.0'
             }
         except Exception as e:
-            # Fallback if marshalling fails
+            # Fallback if anything fails
             logger.error(f"Health check error: {e}")
             return {'status': 'healthy', 'version': '2.0.0'}
 
