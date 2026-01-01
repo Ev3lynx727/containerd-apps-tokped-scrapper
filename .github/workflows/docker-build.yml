@@ -41,17 +41,13 @@ jobs:
       with:
         images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
         tags: |
-          # Enterprise API v2.0.0 semantic versioning
+          # Version tags for releases
           type=ref,event=tag
-          type=raw,value=v2.0.0
-          type=raw,value=2.0
-          type=raw,value=2
+          type=raw,value={{tag}}
+          type=raw,value={{major}}.{{minor}}
+          type=raw,value={{major}}
 
-          # Branch and PR tags
-          type=ref,event=branch
-          type=ref,event=pr
-
-          # Latest tag for default branch only
+          # Latest for main branch
           type=raw,value=latest,enable=${{ github.ref == format('refs/heads/{0}', github.event.repository.default_branch) }}
 
     - name: Build and push Docker image
