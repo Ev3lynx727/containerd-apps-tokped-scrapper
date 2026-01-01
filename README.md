@@ -1319,4 +1319,4 @@ This project is for educational and research purposes. Use responsibly and in ac
 
 ## ⚠️ Legal Notice
 
-This is an unofficial tool. Scraping may violate Tokopedia's terms of service. Use at your own risk and ensure compliance with applicable laws and regulations.
+This is an unofficial tool. Scraping may violate Tokopedia's terms of service. Use at your own risk and ensure compliance with applicable laws and regulations.# Force workflow trigger
