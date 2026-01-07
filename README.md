@@ -1,10 +1,17 @@
-# Tokopedia Unofficial Scraper API - Enhanced Edition
+# Tokopedia Unofficial Scraper API - v2.0.1
 
 This is an advanced unofficial scraper for Tokopedia product data, running as a REST API server with intelligent shop rating algorithms, bestseller detection, and seamless n8n integration.
 
 **WARNING:** Unofficial scraping may violate Tokopedia's terms of service. Use at your own risk. For legitimate use, consider the official API or paid services like Apify/ScrapingBee.
 
-## 🚀 Enhanced Features
+## 🚀 v2.0.1 - Infrastructure & Stability Improvements
+
+### What's New in v2.0.1
+
+- 🔒 **TLS Fingerprinting**: Browser impersonation with `curl_cffi` to bypass anti-bot detection
+- ✅ **Healthcheck Fixed**: Python-based healthcheck (no curl dependency)
+- 🛡️ **Input Validation**: Enhanced validation with injection protection
+- 🆕 **GraphQL v5 Support**: New `searchProductV5` API endpoint
 
 ### Core Intelligence
 - **Shop Intelligence**: Advanced recommendation algorithm (0-100 scoring)
@@ -29,6 +36,40 @@ This is an advanced unofficial scraper for Tokopedia product data, running as a 
 ### API & Security
 - **REST API**: JSON responses with enhanced data structures
 - **HTTPS Security**: SSL/TLS encryption for secure communication
+- **Input Validation**: Regex-based injection protection
+- **TLS Fingerprinting**: Browser impersonation with curl_cffi for anti-bot bypass
+
+## 🚀 Quick Deployment
+
+### One-Command Auto Deploy
+```bash
+# Deploy full stack with latest image and Redis
+./autorun.sh
+```
+
+**What it does:**
+- ✅ Pulls latest image from GitHub Container Registry
+- ✅ Deploys Redis + API containers
+- ✅ Verifies service health
+- ✅ Provides access URLs and management commands
+
+### Manual Deployment
+```bash
+# Pull latest image
+docker pull ghcr.io/ev3lynx727/containerd-apps-tokped-scrapper:latest
+
+# Deploy with Docker Compose
+docker-compose up -d
+
+# Check status
+docker-compose ps
+```
+
+### Access Points
+- 🌐 **API**: http://localhost:8443
+- 📚 **Documentation**: http://localhost:8443/docs
+- 🔍 **Health Check**: http://localhost:8443/health
+- 🗄️ **Redis**: localhost:6379
 - **CORS Enabled**: Ready for web and automation integrations
 - **Docker Containerized**: Production-ready deployment
 - **n8n Integration**: Optimized for workflow automation with real-time triggers
@@ -44,7 +85,7 @@ Health check endpoint.
 {
   "status": "healthy",
   "timestamp": "2024-12-31T10:41:31.002107",
-  "version": "2.0.0"
+  "version": "2.0.1"
 }
 ```
 
@@ -55,7 +96,7 @@ API information and available endpoints.
 ```json
 {
   "message": "Tokopedia Scraper API with Enhanced Features",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "features": [
     "Shop rating and recommendation system",
     "Bestseller detection",

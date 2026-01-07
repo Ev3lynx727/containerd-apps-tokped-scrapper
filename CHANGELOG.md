@@ -5,6 +5,39 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2.0.1] - Infrastructure & Stability Improvements
+
+### Added
+- 🔒 **TLS Fingerprinting**: Added `curl_cffi>=0.6.0` for browser impersonation to bypass anti-bot detection
+- 🆕 **GraphQL v5 API Support**: New `searchProductV5` endpoint implementation
+- 🛡️ **Input Validation**: Enhanced validation with injection protection and character filtering
+- 📖 **Issues Documentation**: New `issues.md` with step-by-step fix instructions
+- 🤖 **Agent Documentation**: New `agent.md` for AI agent workflow guidance
+- 🆕 **Fingerprint Module**: New `src/fingerprint.py` for browser impersonation utilities
+
+### Changed
+- ✅ **Healthcheck Fixed**: Changed from `curl` to Python-based healthcheck (no curl dependency)
+- 🔧 **Scraper Import Fix**: Fixed import path (`src.scraper` instead of `scraper`)
+- 📝 **Documentation Updates**: Updated version references and status in README
+
+### Technical Details
+- **TLS Fingerprinting**: Uses curl_cffi with browser impersonation (chrome124, chrome120, etc.)
+- **Healthcheck**: Python urllib-based check for container orchestration compatibility
+- **Validation**: Regex-based input sanitization for query parameters
+
+### Dependencies Updated
+- ➕ `curl_cffi>=0.6.0` - Browser impersonation for TLS/HTTP2 fingerprint spoofing
+
+### Files Changed
+- `requirements.txt` - Added curl_cffi
+- `docker-compose.yml` - Fixed healthcheck (Python-based)
+- `Dockerfile` - Fixed healthcheck instruction
+- `server_restx.py` - Fixed scraper import, added validation
+- `src/scraper.py` - Added v5 API, curl_cffi support
+- `src/fingerprint.py` - NEW: TLS fingerprinting utilities
+
+---
+
 ## [2.0.0] - Enterprise REST API Transformation 🚀 MAJOR RELEASE
 
 ### Added
