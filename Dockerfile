@@ -24,7 +24,7 @@ RUN openssl req -x509 -newkey rsa:4096 -keyout certs/key.pem -out certs/cert.pem
 EXPOSE 8443
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('https://localhost:8443/health', verify=False)" || exit 1
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8443/health')" || exit 1
 
 CMD ["python", "server_restx.py"]
